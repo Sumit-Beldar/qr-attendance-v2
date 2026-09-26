@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Portal - QR Attendance</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 12px;
+      background: #EAE9E4;
+      color: var(--ink);
+    }
+    .badge-success {
+      background: var(--success-bg);
+      color: var(--accent);
+    }
+    .badge-warning {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+      flex: 1;
+      min-width: 180px;
+    }
+    .tab-buttons {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <!-- Global Navigation Header -->
+  <header class="header-nav" id="main-nav" style="display: none;">
+    <div class="nav-container">
+      <a href="/teacher" class="nav-brand" style="font-size: 16px;">Attendance System</a>
+      <nav class="nav-links">
+        <a href="#start" class="nav-link" id="nav-start">Start Attendance</a>
+        <a href="#live" class="nav-link" id="nav-live">Live Session</a>
+        <a href="#history" class="nav-link" id="nav-history">History</a>
+        <a href="#students" class="nav-link" id="nav-students">Students</a>
+        <a href="#settings" class="nav-link" id="nav-settings">Settings</a>
+        <button id="btn-logout" class="btn btn-secondary" style="padding: 4px 10px; min-height: 32px; font-size: 13px;">Log out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" id="main-content">
+    <div id="view-loading" style="text-align: center; padding: 40px 0;">
+      <p>Loading teacher portal...</p>
+    </div>
+
+    <!-- Setup View (First run) -->
+    <div id="view-setup" style="display: none;" class="container-narrow">
+      <div class="card">
+        <h1>Create Teacher Account</h1>
+        <p style="margin-bottom: 16px;">Welcome! Set up the administrator account for this laptop.</p>
+        <div id="setup-alert" class="alert alert-error" style="display: none;"></div>
+        <form id="form-setup">
+          <div class="form-group" id="group-setup-key" style="display: none;">
+            <label for="setup-key">Setup Key</label>
+            <input type="password" id="setup-key" placeholder="Enter SETUP_KEY from environment">
+            <p class="text-sm text-muted" style="margin-top: 4px;">Required to initialize administrator setup on public URLs.</p>
+          </div>
+          <div class="form-group">
+            <label for="setup-name">Full Name</label>
+            <input type="text" id="setup-name" required placeholder="e.g. Dr. Jane Smith">
+          </div>
+          <div class="form-group">
+            <label for="setup-username">Username</label>
+            <input type="text" id="setup-username" required placeholder="e.g. teacher">
+          </div>
+          <div class="form-group">
+            <label for="setup-password">Password (min 6 characters)</label>
+            <input type="password" id="setup-password" required minlength="6">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg">Create Account &amp; Continue</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Login View -->
+    <div id="view-login" style="display: none;" class="container-narrow">
+      <div class="card">
+        <h1>Teacher Login</h1>
+        <p style="margin-bottom: 16px;">Enter your credentials to manage attendance.</p>
+        <div id="login-alert" class="alert alert-error" style="display: none;"></div>
+        <form id="form-login">
+          <div class="form-group">
+            <label for="login-username">Username</label>
+            <input type="text" id="login-username" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-login-submit">Sign In</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- App Views Container (when logged in) -->
+    <div id="view-app" style="display: none;">
+
+      <!-- STUDENTS SECTION -->
+      <div id="section-students" class="app-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h1>Students &amp; Batches</h1>
+            <p>Manage enrolled classes, student credentials, and bulk imports.</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" id="btn-open-batches">Manage Batches</button>
+            <button class="btn btn-secondary" id="btn-open-csv-modal">Import CSV</button>
+            <button class="btn btn-primary" id="btn-open-add-student">Add Student</button>
+          </div>
+        </div>
+
+        <div class="filter-bar card" style="padding: 12px;">
+          <input type="text" id="student-search-input" placeholder="Search by name or Student ID...">
+          <select id="student-batch-filter">
+            <option value="">All Batches</option>
+          </select>
+          <a href="/api/teacher/students/sample-csv" class="btn btn-secondary" download style="min-height: 40px; font-size: 13px;">Download Sample CSV</a>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Batch</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="students-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 24px; color: var(--muted);">Loading students...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SETTINGS SECTION -->
+      <div id="section-settings" class="app-section" style="display: none;">
+        <div style="margin-bottom: 16px;">
+          <h1>Settings</h1>
+          <p>Configure network IP detection and attendance security rules.</p>
+        </div>
+        <div class="card" style="max-width: 600px;">
+          <form id="form-settings">
+            <div class="form-group">
+              <label for="settings-ip">Active Network IP Address</label>
+              <select id="settings-ip"></select>
+              <p class="text-sm text-muted" style="margin-top: 6px;">Used to generate all QR codes and student URLs. Must be the IP reachable by student phones on the same Wi-Fi or hotspot.</p>
+            </div>
+            <div class="form-group" style="margin-top: 20px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="settings-device-lock" style="width: 18px; height: 18px;">
+                <span style="font-weight: 500; font-size: 15px;">Enforce One Phone per Student (Anti-Proxy)</span>
+              </label>
+              <p class="text-sm text-muted" style="margin-left: 26px; margin-top: 4px;">Blocks a phone from marking attendance for multiple students during the same session, and logs proxy attempts.</p>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Save Settings</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- START ATTENDANCE SECTION -->
+      <div id="section-start" class="app-section" style="display: none;">
+        <div style="margin-bottom: 20px;">
+          <h1>Start Attendance Session</h1>
+          <p>Launch a live, 7-second rotating QR code session on your projector or screen.</p>
+        </div>
+
+        <div id="active-session-banner" class="card" style="display: none; border-left: 4px solid var(--accent); background: #FAF9F6; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <span class="badge badge-success" style="margin-bottom: 6px;">Active Session in Progress</span>
+              <h2 id="active-banner-title" style="margin: 4px 0;">DBMS – Lecture 14</h2>
+              <p id="active-banner-meta" class="text-sm">Batch: SE-A 2026 • Present: 0 / 0</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-resume-projector" class="btn btn-primary">Open Projector View</button>
+              <button id="btn-end-active-session" class="btn btn-danger">End Session</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="max-width: 560px;">
+          <form id="form-start-session">
+            <div class="form-group">
+              <label for="session-batch-select">Target Batch / Class</label>
+              <select id="session-batch-select" required></select>
+            </div>
+            <div class="form-group">
+              <label for="session-title-input">Lecture / Subject Title</label>
+              <input type="text" id="session-title-input" required placeholder="e.g. DBMS – Lecture 14">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-start-submit">
+              Start Attendance &amp; Open Projector
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- LIVE SESSION MONITORING SECTION -->
+      <div id="section-live" class="app-section" style="display: none;">
+        <div id="live-no-session" class="card" style="text-align: center; padding: 48px 20px; display: none;">
+          <h2>No Active Attendance Session</h2>
+          <p style="margin: 8px 0 20px 0;">Start an attendance session from the "Start Attendance" tab to begin live tracking.</p>
+          <a href="#start" class="btn btn-primary">Start New Session</a>
+        </div>
+
+        <div id="live-active-container" style="display: none;">
+          <!-- Top Session Stats Bar -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+              <div>
+                <span class="badge badge-success" style="margin-bottom: 6px;">Live Tracking Active</span>
+                <h1 id="live-session-title" style="font-size: 22px; margin: 2px 0;">DBMS – Lecture 14</h1>
+                <p id="live-session-meta" class="text-sm">Batch: SE-A 2026 • Started: 10:00 AM</p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="background: #FAF9F6; border: 1px solid var(--border); padding: 8px 16px; border-radius: var(--radius); text-align: center;">
+                  <span id="live-stat-present" class="tabular" style="font-size: 20px; font-weight: 700; color: var(--accent);">0</span>
+                  <span style="color: var(--muted); font-size: 15px;"> / </span>
+                  <span id="live-stat-total" class="tabular" style="font-size: 20px; font-weight: 700; color: var(--ink);">0</span>
+                  <div class="text-sm text-muted">Present</div>
+                </div>
+                <button id="btn-live-open-projector" class="btn btn-primary">Projector View</button>
+                <button id="btn-live-end-session" class="btn btn-danger">End Session</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Proxy Flags Alert Banner -->
+          <div id="live-flags-banner" class="alert alert-warning" style="display: none; margin-bottom: 16px;">
+            <div style="font-weight: 600; margin-bottom: 4px;" id="live-flags-title">Proxy Attendance Warnings</div>
+            <div id="live-flags-list" class="text-sm"></div>
+          </div>
+
+          <!-- Tabs: Checked In vs Not Yet Marked -->
+          <div class="tab-buttons">
+            <button class="tab-btn active" id="tab-btn-present">Checked In (<span id="count-tab-present">0</span>)</button>
+            <button class="tab-btn" id="tab-btn-absent">Not Yet Marked (<span id="count-tab-absent">0</span>)</button>
+          </div>
+
+          <!-- Present Table -->
+          <div id="container-table-present" class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Time Marked</th>
+                  <th>Method</th>
+                  <th style="text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="table-present-body"></tbody>
+            </table>
+          </div>
+
+          <!-- Absent Table -->
+          <div id="container-table-absent" class="table-wrapper" style="display: none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="table-absent-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY SECTION -->
+      <div id="section-history" class="app-section" style="display: none;">
+        <div style="margin-bottom: 16px;">
+          <h1>Attendance History</h1>
+          <p>Review past lectures and download verified CSV attendance sheets.</p>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Lecture / Subject</th>
+                <th>Batch</th>
+                <th>Attendance</th>
+                <th>Flags</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 24px; color: var(--muted);">Loading history...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SETTINGS SECTION -->
+      <div id="section-settings" class="app-section" style="display: none;">
+        <div style="margin-bottom: 16px;">
+          <h1>Settings &amp; Anti-Proxy Controls</h1>
+          <p>Configure network IP detection, QR rotation grace window, and optional classroom GPS location fencing.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+          <!-- Network & Device Rules -->
+          <div class="card">
+            <h2>Network &amp; Device Rules</h2>
+            <form id="form-settings" style="margin-top: 16px;">
+              <div class="form-group">
+                <label for="settings-ip">Active Network IP Address</label>
+                <select id="settings-ip"></select>
+                <p class="text-sm text-muted" style="margin-top: 6px;">Used when running locally without a custom public domain.</p>
+              </div>
+
+              <div class="form-group" style="margin-top: 16px;">
+                <label for="settings-grace-slots">QR Code Grace Window</label>
+                <select id="settings-grace-slots">
+                  <option value="1">1 slot (7 seconds - strict)</option>
+                  <option value="2" selected>2 slots (~14 seconds - recommended)</option>
+                  <option value="3">3 slots (~21 seconds - generous)</option>
+                  <option value="4">4 slots (~28 seconds - high latency networks)</option>
+                </select>
+                <p class="text-sm text-muted" style="margin-top: 4px;">Allows slightly delayed scans to be accepted if network latency occurs.</p>
+              </div>
+
+              <div class="form-group" style="margin-top: 20px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="settings-device-lock" style="width: 18px; height: 18px;">
+                  <span style="font-weight: 500; font-size: 15px;">Enforce One Phone per Student (Device Lock)</span>
+                </label>
+                <p class="text-sm text-muted" style="margin-left: 26px; margin-top: 4px;">Prevents a single phone from marking attendance for multiple students during the same session.</p>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Save Network &amp; Device Rules</button>
+            </form>
+          </div>
+
+          <!-- Geolocation Anti-Proxy Settings -->
+          <div class="card">
+            <h2>Classroom Location Fence (GPS)</h2>
+            <p class="text-sm text-muted" style="margin-top: 4px; margin-bottom: 16px;">Ensure students are physically inside the classroom when scanning over public internet.</p>
+            <form id="form-location-settings">
+              <div class="form-group">
+                <label for="settings-loc-mode">Location Check Mode</label>
+                <select id="settings-loc-mode">
+                  <option value="off">Off (No GPS check)</option>
+                  <option value="flag" selected>Flag only (Mark present + flag if outside classroom)</option>
+                  <option value="block">Block (Refuse attendance if outside classroom)</option>
+                </select>
+              </div>
+
+              <div style="display: flex; gap: 8px; align-items: flex-end; margin-top: 12px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                  <label for="settings-class-lat">Latitude</label>
+                  <input type="text" id="settings-class-lat" placeholder="e.g. 12.9716">
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                  <label for="settings-class-lng">Longitude</label>
+                  <input type="text" id="settings-class-lng" placeholder="e.g. 77.5946">
+                </div>
+              </div>
+
+              <div style="margin-top: 8px; margin-bottom: 16px;">
+                <button type="button" id="btn-use-current-location" class="btn btn-secondary" style="font-size: 13px; padding: 6px 12px; min-height: 34px;">
+                  <svg style="width: 14px; height: 14px; margin-right: 6px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M2 12h4m12 0h4m-10-8a8 8 0 1 0 0 16 8 8 0 0 0 0-16z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  Use my phone's current GPS location
+                </button>
+              </div>
+
+              <div class="form-group">
+                <label for="settings-class-radius">Allowed Radius (Meters)</label>
+                <input type="number" id="settings-class-radius" value="150" min="20" max="2000" step="10">
+                <p class="text-sm text-muted" style="margin-top: 4px;">Recommended: 100 - 200m to account for standard GPS accuracy.</p>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Save Location Settings</button>
+            </form>
+          </div>
+
+          <!-- Student Connection Link -->
+          <div class="card" style="text-align: center;">
+            <h2>Student Connection Link</h2>
+            <p style="margin-bottom: 12px;">Students can scan this QR code once to open the app on their phone:</p>
+            <div id="student-link-qr-box" style="width: 180px; height: 180px; margin: 0 auto 12px auto; display: flex; align-items: center; justify-content: center;">
+              <p class="text-sm text-muted">Loading QR...</p>
+            </div>
+            <div style="font-family: var(--mono); font-weight: 600; font-size: 15px; color: var(--ink); margin-bottom: 8px;" id="disp-student-url">https://...</div>
+            <p class="text-sm text-muted">Students can open this link in any browser on phone or laptop.</p>
+          </div>
+
+          <div class="card">
+            <h2>Data Backup</h2>
+            <p style="margin-top: 12px; margin-bottom: 16px;">Download a complete JSON snapshot of all batches, students, attendance sessions, records, and security flags.</p>
+            <a href="/api/teacher/backup" class="btn btn-secondary" style="display: inline-block; text-decoration: none;">Download Full Backup (JSON)</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODALS -->
+
+  <!-- Add Student Modal -->
+  <div id="modal-add-student" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+      <h2>Add New Student</h2>
+      <p style="margin-bottom: 16px;">Enter the student's details and initial temporary password.</p>
+      <div id="add-student-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="form-add-student">
+        <div class="form-group">
+          <label for="add-student-id">Student ID / Roll No</label>
+          <input type="text" id="add-student-id" required placeholder="e.g. CS202601">
+        </div>
+        <div class="form-group">
+          <label for="add-student-name">Full Name</label>
+          <input type="text" id="add-student-name" required placeholder="e.g. Alex Johnson">
+        </div>
+        <div class="form-group">
+          <label for="add-student-batch">Batch / Class</label>
+          <select id="add-student-batch" required></select>
+        </div>
+        <div class="form-group">
+          <label for="add-student-pass">Initial Password</label>
+          <input type="text" id="add-student-pass" required value="Pass@123" minlength="6">
+          <p class="text-sm text-muted" style="margin-top: 4px;">Student will be prompted to change this on first login.</p>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Manage Batches Modal -->
+  <div id="modal-batches" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+      <h2>Manage Batches</h2>
+      <p style="margin-bottom: 16px;">Create and rename class batches.</p>
+      <form id="form-create-batch" style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <input type="text" id="new-batch-name" placeholder="New batch name (e.g. SE-A 2026)" required style="flex: 1;">
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+      <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Batch Name</th>
+              <th>Students</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="batches-table-body"></tbody>
+        </table>
+      </div>
+      <div style="text-align: right; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV Import Modal -->
+  <div id="modal-csv-import" class="modal-backdrop" style="display: none;">
+    <div class="modal" style="max-width: 680px;">
+      <h2>Bulk Import Students via CSV</h2>
+      <p style="margin-bottom: 16px;">Upload a CSV with columns: <code>student_id,name,batch,password</code>.</p>
+      <div id="csv-alert" class="alert alert-error" style="display: none;"></div>
+
+      <div id="csv-step-upload">
+        <div class="form-group">
+          <label for="csv-file-input">Select CSV File</label>
+          <input type="file" id="csv-file-input" accept=".csv,text/csv">
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+          <a href="/api/teacher/students/sample-csv" class="btn btn-secondary text-sm" download>Download Sample CSV</a>
+          <div>
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="button" id="btn-preview-csv" class="btn btn-primary" disabled>Preview Data</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="csv-step-preview" style="display: none;">
+        <div id="csv-summary" class="alert alert-success" style="margin-bottom: 12px;"></div>
+        
+        <div id="csv-invalid-section" style="display: none; margin-bottom: 16px;">
+          <h2 style="font-size: 14px; color: var(--error);">Invalid Rows (will be skipped):</h2>
+          <div class="table-wrapper" style="max-height: 120px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr><th>Row</th><th>Student ID</th><th>Reason</th></tr>
+              </thead>
+              <tbody id="csv-invalid-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <h2 style="font-size: 14px;">Valid Rows Preview:</h2>
+        <div class="table-wrapper" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px;">
+          <table>
+            <thead>
+              <tr><th>Row</th><th>Student ID</th><th>Name</th><th>Batch</th></tr>
+            </thead>
+            <tbody id="csv-valid-table-body"></tbody>
+          </table>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" id="btn-csv-back" class="btn btn-secondary">Back</button>
+          <button type="button" id="btn-commit-csv-import" class="btn btn-primary">Import Valid Students</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div id="modal-reset-password" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+      <h2>Reset Student Password</h2>
+      <p id="reset-student-desc" style="margin-bottom: 16px;">Set a new temporary password for the student.</p>
+      <form id="form-reset-password">
+        <input type="hidden" id="reset-student-id">
+        <div class="form-group">
+          <label for="reset-new-password">New Password (min 6 chars)</label>
+          <input type="text" id="reset-new-password" required minlength="6" value="Pass@123">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save New Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/teacher.js"></script>
+</body>
+</html>

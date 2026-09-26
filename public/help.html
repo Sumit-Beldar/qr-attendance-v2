@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance System Help</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container-narrow">
+    <h1>Attendance Help &amp; Troubleshooting</h1>
+
+    <!-- Production Guide Section -->
+    <div id="section-prod-guide" style="display: none;">
+      <div class="card">
+        <h2 style="margin-bottom: 12px;">How to Mark Attendance</h2>
+        <ol style="margin-left: 20px; color: var(--ink); line-height: 1.6;">
+          <li>Log in to your student account with your Student ID and password.</li>
+          <li>Tap <strong>Scan QR Code</strong> to open your phone camera.</li>
+          <li>Point your camera at the rotating QR code shown on the classroom screen.</li>
+          <li>If your camera is unavailable or permission is blocked, tap <strong>Enter code manually</strong> and type the 6-character code below the QR.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom: 12px;">Camera Permission Help</h2>
+        <p style="margin-bottom: 8px;"><strong>Android (Chrome):</strong> Tap the lock or tune icon in the address bar &rarr; Site settings &rarr; Camera &rarr; Allow.</p>
+        <p style="margin-bottom: 8px;"><strong>iPhone (Safari):</strong> Tap the <strong>aA</strong> icon in the address bar &rarr; Website Settings &rarr; Camera &rarr; Allow.</p>
+        <p>After allowing permissions, refresh the page and tap <strong>Scan QR Code</strong> again.</p>
+      </div>
+    </div>
+
+    <!-- Local LAN Certificate Warning Section -->
+    <div id="section-local-certs">
+      <p style="margin-bottom: 20px;">When running on a local network without an internet domain, your browser will show a standard certificate notice the first time you connect.</p>
+      
+      <div class="card">
+        <h2 style="margin-bottom: 12px;">Google Chrome (Android)</h2>
+        <ol style="margin-left: 20px; color: var(--ink); line-height: 1.6;">
+          <li>On the "Your connection is not private" screen, tap <strong>Advanced</strong> at the bottom.</li>
+          <li>Tap <strong>Proceed to ... (unsafe)</strong>.</li>
+          <li>You will be taken directly to the attendance login page.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom: 12px;">Safari (iPhone / iPad)</h2>
+        <ol style="margin-left: 20px; color: var(--ink); line-height: 1.6;">
+          <li>On the "This Connection Is Not Private" page, tap <strong>Show Details</strong>.</li>
+          <li>Scroll down and tap <strong>visit this website</strong>.</li>
+          <li>Confirm by tapping <strong>Visit Website</strong> in the popup dialog.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom: 8px;">Network Troubleshooting</h2>
+        <p style="margin-bottom: 8px;"><strong>Phones and laptop must be on the same network.</strong></p>
+        <p style="margin-bottom: 8px;">College Wi-Fi often blocks device-to-device traffic. If phones cannot connect, turn on your phone's mobile hotspot and connect both the teacher's laptop and the students to it.</p>
+        <p style="margin-bottom: 8px;">On Windows, ensure Node.js is allowed through the Windows Defender Firewall on Private networks.</p>
+        <p>If your phone keeps dropping the local connection, turn off cellular mobile data temporarily so it stays on the local Wi-Fi.</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 24px;">
+      <a href="/student/login" class="btn btn-primary btn-block btn-lg">Back to Student Login</a>
+    </div>
+  </div>
+
+  <script src="/js/help.js"></script>
+</body>
+</html>

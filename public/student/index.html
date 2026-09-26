@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Student Attendance</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Student Mobile Optimizations */
+    body {
+      background-color: var(--bg);
+      padding-bottom: 24px;
+    }
+
+    .student-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .student-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 4px;
+      background: #EAE9E4;
+      color: var(--ink);
+    }
+
+    .scanner-view {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #000000;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #reader {
+      flex: 1;
+      width: 100%;
+      background: #000000;
+    }
+
+    .scanner-overlay {
+      padding: 20px 16px;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Success Card */
+    .success-badge-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--success-bg);
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px auto;
+      color: var(--accent);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 440px;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .code-input {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      text-align: center;
+      text-transform: uppercase;
+      padding: 12px;
+      margin: 12px 0;
+    }
+  </style>
+  <script src="/vendor/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- Loading View -->
+  <div id="view-loading" class="container-narrow" style="text-align: center; padding: 40px 0;">
+    <p>Loading attendance app...</p>
+  </div>
+
+  <!-- Login View -->
+  <div id="view-login" class="container-narrow" style="display: none; margin-top: 20px;">
+    <div class="card">
+      <h1 style="font-size: 22px;">Student Login</h1>
+      <p style="margin-bottom: 16px;">Sign in to mark your lecture attendance.</p>
+      
+      <div id="pending-checkin-alert" class="alert alert-warning" style="display: none;">
+        Scan received! Please sign in to finish marking your attendance.
+      </div>
+
+      <div id="login-alert" class="alert alert-error" style="display: none;"></div>
+
+      <form id="form-student-login">
+        <div class="form-group">
+          <label for="student-id-input">Student ID / Roll No</label>
+          <input type="text" id="student-id-input" required autocomplete="username" placeholder="e.g. CS202601" style="text-transform: uppercase;">
+        </div>
+        <div class="form-group">
+          <label for="student-pass-input">Password</label>
+          <input type="password" id="student-pass-input" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-login-submit">Sign In</button>
+      </form>
+
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="/help" class="text-sm" style="color: var(--accent); text-decoration: none;">First time on this phone? Connection help</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Force Password Change View -->
+  <div id="view-change-password" class="container-narrow" style="display: none; margin-top: 20px;">
+    <div class="card">
+      <h1 style="font-size: 22px;">Set New Password</h1>
+      <p style="margin-bottom: 16px;">For security, please set a new personal password before continuing.</p>
+      <div id="change-pass-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="form-force-password">
+        <div class="form-group">
+          <label for="new-pass-input">New Password (min 6 characters)</label>
+          <input type="password" id="new-pass-input" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label for="confirm-pass-input">Confirm New Password</label>
+          <input type="password" id="confirm-pass-input" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Update Password &amp; Continue</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Student Dashboard View -->
+  <div id="view-main" style="display: none;">
+    <header class="student-header">
+      <div>
+        <div style="font-weight: 600; font-size: 17px;" id="disp-student-name">Student Name</div>
+        <div class="text-sm text-muted">
+          <span id="disp-student-id" class="tabular">CS202601</span> • <span id="disp-batch-name" class="student-badge">Batch</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-account-modal" class="btn btn-secondary" style="padding: 6px 12px; min-height: 36px; font-size: 13px;">Account</button>
+        <button id="btn-student-logout" class="btn btn-secondary" style="padding: 6px 12px; min-height: 36px; font-size: 13px;">Log out</button>
+      </div>
+    </header>
+
+    <div class="container-narrow">
+      <div id="main-alert" class="alert alert-error" style="display: none;"></div>
+
+      <!-- Action Box -->
+      <div class="card" style="text-align: center; padding: 28px 20px;">
+        <h2 style="font-size: 20px; margin-bottom: 6px;">Mark Attendance</h2>
+        <p style="margin-bottom: 24px;">Scan the rotating QR code displayed on the classroom screen.</p>
+        
+        <button id="btn-open-scanner" class="btn btn-primary btn-block btn-lg" style="font-size: 18px; margin-bottom: 12px;">
+          <svg style="width: 20px; height: 20px; margin-right: 8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+          Scan QR Code
+        </button>
+
+        <div>
+          <button id="btn-open-manual" class="btn btn-secondary btn-block" style="min-height: 44px; font-size: 15px;">
+            Enter code manually
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Attendance Section -->
+      <div class="card" style="margin-top: 16px;">
+        <h2 style="font-size: 16px; margin-bottom: 12px;">Recent Attendance</h2>
+        <div id="recent-attendance-list">
+          <p class="text-sm text-muted">No attendance recorded yet.</p>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="/help" class="text-sm text-muted" style="text-decoration: none;">Trouble scanning? Connection &amp; Camera Help</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success / Result Screen -->
+  <div id="view-success" class="container-narrow" style="display: none; margin-top: 30px;">
+    <div class="card" style="text-align: center; padding: 36px 20px;">
+      <div class="success-badge-icon">
+        <svg style="width: 36px; height: 36px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+
+      <h1 id="success-headline" style="font-size: 26px; color: var(--accent); margin-bottom: 8px;">You're marked present</h1>
+      <h2 id="success-subject" style="font-size: 20px; font-weight: 600; margin-bottom: 4px;">DBMS – Lecture 14</h2>
+      <p id="success-time" class="tabular text-muted" style="font-size: 16px; margin-bottom: 28px;">10:02 AM, 26 Sep 2026</p>
+
+      <button id="btn-success-done" class="btn btn-primary btn-block btn-lg">Back to Home</button>
+    </div>
+  </div>
+
+  <!-- Fullscreen Camera Scanner View -->
+  <div id="view-scanner" class="scanner-view" style="display: none;">
+    <div class="scanner-overlay">
+      <span style="color: #FFFFFF; font-weight: 600; font-size: 16px;">Scan Projector QR Code</span>
+      <button id="btn-close-scanner" class="btn btn-secondary" style="background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 6px 14px; min-height: 36px;">Cancel</button>
+    </div>
+    <div id="reader"></div>
+  </div>
+
+  <!-- Manual Code Entry Modal -->
+  <div id="modal-manual-code" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+      <h2>Enter 6-Character Code</h2>
+      <p style="margin-bottom: 12px;">Type the code shown beneath the QR on the projector.</p>
+      <div id="manual-code-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="form-manual-code">
+        <input type="text" id="manual-code-input" class="code-input" maxlength="6" required autocomplete="off" placeholder="ABCDEF">
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button type="button" class="btn btn-secondary btn-block modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-block" id="btn-manual-submit">Submit Code</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Student Account Modal -->
+  <div id="modal-account" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+      <h2>Account Settings</h2>
+      <p style="margin-bottom: 16px;">Change your login password.</p>
+      <div id="account-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="form-account-pass">
+        <div class="form-group">
+          <label for="acc-curr-pass">Current Password</label>
+          <input type="password" id="acc-curr-pass" required>
+        </div>
+        <div class="form-group">
+          <label for="acc-new-pass">New Password (min 6 characters)</label>
+          <input type="password" id="acc-new-pass" required minlength="6">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/student.js"></script>
+</body>
+</html>

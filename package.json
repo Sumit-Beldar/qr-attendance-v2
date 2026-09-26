@@ -1,0 +1,25 @@
+{
+  "name": "qr-attendance-v2",
+  "version": "1.0.0",
+  "description": "Offline-first local-network QR attendance system",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/test-codes.js && node test/test-db.js && node test/test-teacher.js && node test/test-sessions.js && node test/test-student-attendance.js && node test/test-part-b.js && node test/test-part-c.js && node test/test-integration.js",
+    "migrate:local-to-cloud": "node scripts/migrate-local-to-cloud.js"
+  },
+  "dependencies": {
+    "@libsql/client": "0.14.0",
+    "bcryptjs": "2.4.3",
+    "cookie-parser": "1.4.7",
+    "cookie-session": "2.1.0",
+    "express": "4.21.2",
+    "helmet": "8.0.0",
+    "multer": "1.4.5-lts.1",
+    "qrcode": "1.5.4",
+    "selfsigned": "2.4.1"
+  }
+}
