@@ -115,6 +115,89 @@ router.get('/me', requireTeacher, asyncHandler(async (req, res) => {
   res.json({ ok: true, teacher });
 }));
 
+// ─── teacher accounts management ──────────────────────────────────────────────
+
+router.get('/accounts', requireTeacher, asyncHandler(async (req, res) => {
+  const teachers = await query('SELECT id, username, name, created_at FROM teachers ORDER BY id ASC');
+  res.json({ ok: true, teachers });
+}));
+
+router.post('/accounts', requireTeacher, asyncHandler(async (req, res) => {
+  const { username, password, name } = req.body;
+  if (!username?.trim() || !password?.trim() || !name?.trim()) {
+    return res.status(400).json({ ok: false, error: 'Name, Username, and Password are all required' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ ok: false, error: 'Password must be at least 6 characters' });
+  }
+
+  const existing = await queryOne('SELECT id FROM teachers WHERE LOWER(username) = LOWER(?)', [username.trim()]);
+  if (existing) {
+    return res.status(400).json({ ok: false, error: `A teacher with username "${username.trim()}" already exists` });
+  }
+
+  const passwordHash = bcrypt.hashSync(password, 10);
+  try {
+    const info = await execute(
+      'INSERT INTO teachers (username, password_hash, name, session_version, created_at) VALUES (?, ?, ?, 1, ?)',
+      [username.trim(), passwordHash, name.trim(), Date.now()]
+    );
+    res.json({
+      ok: true,
+      message: `Teacher "${name.trim()}" created successfully`,
+      teacher: { id: info.lastInsertRowid, username: username.trim(), name: name.trim() },
+    });
+  } catch (err) {
+    if (isUniqueConstraintError(err)) {
+      return res.status(400).json({ ok: false, error: 'Username already in use' });
+    }
+    return res.status(500).json({ ok: false, error: 'Failed to create teacher: ' + err.message });
+  }
+}));
+
+router.post('/accounts/:id/reset-password', requireTeacher, asyncHandler(async (req, res) => {
+  const targetId = parseInt(req.params.id, 10);
+  const { new_password } = req.body;
+  if (!new_password || new_password.length < 6) {
+    return res.status(400).json({ ok: false, error: 'New password must be at least 6 characters' });
+  }
+
+  const teacher = await queryOne('SELECT id, name FROM teachers WHERE id = ?', [targetId]);
+  if (!teacher) {
+    return res.status(404).json({ ok: false, error: 'Teacher not found' });
+  }
+
+  const passwordHash = bcrypt.hashSync(new_password, 10);
+  await execute(
+    'UPDATE teachers SET password_hash = ?, session_version = session_version + 1 WHERE id = ?',
+    [passwordHash, targetId]
+  );
+
+  res.json({ ok: true, message: `Password reset successfully for ${teacher.name}` });
+}));
+
+router.delete('/accounts/:id', requireTeacher, asyncHandler(async (req, res) => {
+  const targetId = parseInt(req.params.id, 10);
+  const currentTeacherId = req.session.teacherId;
+
+  if (targetId === currentTeacherId) {
+    return res.status(400).json({ ok: false, error: 'You cannot delete your own account while logged in.' });
+  }
+
+  const countRow = await queryOne('SELECT COUNT(*) AS count FROM teachers');
+  if (Number(countRow.count) <= 1) {
+    return res.status(400).json({ ok: false, error: 'Cannot delete the only teacher account.' });
+  }
+
+  const teacher = await queryOne('SELECT id, name FROM teachers WHERE id = ?', [targetId]);
+  if (!teacher) {
+    return res.status(404).json({ ok: false, error: 'Teacher not found.' });
+  }
+
+  await execute('DELETE FROM teachers WHERE id = ?', [targetId]);
+  res.json({ ok: true, message: `Teacher "${teacher.name}" deleted successfully.` });
+}));
+
 // ─── batches ─────────────────────────────────────────────────────────────────
 
 router.get('/batches', requireTeacher, asyncHandler(async (req, res) => {

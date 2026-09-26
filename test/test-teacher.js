@@ -88,6 +88,41 @@ async function runTeacherTests() {
   const deviceLockSetting = await queryOne('SELECT value FROM settings WHERE key = ?', ['device_lock']);
   assert.strictEqual(deviceLockSetting.value, 'true');
 
+  // 7. Multi-Teacher Account Support
+  const teacher2Hash = bcrypt.hashSync('Teacher2Pass@123', 10);
+  const teacher2Info = await execute(
+    'INSERT INTO teachers (username, password_hash, name, session_version, created_at) VALUES (?, ?, ?, 1, ?)',
+    ['teacher2', teacher2Hash, 'Prof. Ada Lovelace', Date.now()]
+  );
+  assert(teacher2Info.lastInsertRowid > teacherId, 'Second teacher ID should be greater');
+
+  // Duplicate username should fail
+  try {
+    await execute(
+      'INSERT INTO teachers (username, password_hash, name, session_version, created_at) VALUES (?, ?, ?, 1, ?)',
+      ['teacher2', teacher2Hash, 'Prof. Ada Duplicate', 1, Date.now()]
+    );
+    assert.fail('Duplicate teacher username should have thrown');
+  } catch (err) {
+    assert(isUniqueConstraintError(err), 'Should catch duplicate teacher username error');
+  }
+
+  // List all teachers
+  const allTeachers = await query('SELECT id, username, name FROM teachers ORDER BY id ASC');
+  assert.strictEqual(allTeachers.length, 2, 'Should have 2 teachers');
+  assert.strictEqual(allTeachers[0].username, 'teacher1');
+  assert.strictEqual(allTeachers[1].username, 'teacher2');
+
+  // Reset teacher password and increment session_version
+  const newTeacher2Hash = bcrypt.hashSync('NewTeacher2Pass!456', 10);
+  await execute(
+    'UPDATE teachers SET password_hash = ?, session_version = session_version + 1 WHERE id = ?',
+    [newTeacher2Hash, teacher2Info.lastInsertRowid]
+  );
+  const updatedTeacher2 = await queryOne('SELECT * FROM teachers WHERE id = ?', [teacher2Info.lastInsertRowid]);
+  assert(bcrypt.compareSync('NewTeacher2Pass!456', updatedTeacher2.password_hash));
+  assert.strictEqual(updatedTeacher2.session_version, 2, 'session_version should increment to 2');
+
   console.log('Teacher test suite passed successfully!');
 }
 

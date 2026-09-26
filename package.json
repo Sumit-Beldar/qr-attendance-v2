@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node test/test-codes.js && node test/test-db.js && node test/test-teacher.js && node test/test-sessions.js && node test/test-student-attendance.js && node test/test-part-b.js && node test/test-part-c.js && node test/test-integration.js",
+    "test": "node test/test-codes.js && node test/test-db.js && node test/test-teacher.js && node test/test-teacher-accounts-api.js && node test/test-sessions.js && node test/test-student-attendance.js && node test/test-part-b.js && node test/test-part-c.js && node test/test-integration.js",
     "migrate:local-to-cloud": "node scripts/migrate-local-to-cloud.js"
   },
   "dependencies": {

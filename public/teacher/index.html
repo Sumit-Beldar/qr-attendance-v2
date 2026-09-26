@@ -454,6 +454,36 @@
             <p style="margin-top: 12px; margin-bottom: 16px;">Download a complete JSON snapshot of all batches, students, attendance sessions, records, and security flags.</p>
             <a href="/api/teacher/backup" class="btn btn-secondary" style="display: inline-block; text-decoration: none;">Download Full Backup (JSON)</a>
           </div>
+
+          <!-- Teacher Accounts Card -->
+          <div class="card" style="grid-column: 1 / -1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <h2>Teacher Accounts</h2>
+                <p class="text-sm text-muted" style="margin-top: 4px;">Manage teacher access. Any registered teacher can log in, start attendance sessions, and manage classes.</p>
+              </div>
+              <button type="button" id="btn-open-add-teacher" class="btn btn-primary" style="font-size: 13px; padding: 6px 14px;">
+                + Add Teacher
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Date Added</th>
+                    <th style="text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="teachers-table-body">
+                  <tr>
+                    <td colspan="4" style="text-align: center; color: var(--muted); padding: 16px;">Loading teachers...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -589,6 +619,53 @@
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
           <button type="button" class="btn btn-secondary modal-close">Cancel</button>
           <button type="submit" class="btn btn-primary">Save New Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Teacher Modal -->
+  <div id="modal-add-teacher" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+      <h2>Add New Teacher Account</h2>
+      <p style="margin-bottom: 16px;">Create a new teacher login for this attendance system.</p>
+      <div id="add-teacher-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="form-add-teacher">
+        <div class="form-group">
+          <label for="add-teacher-name">Full Name</label>
+          <input type="text" id="add-teacher-name" required placeholder="e.g. Prof. Alan Turing">
+        </div>
+        <div class="form-group">
+          <label for="add-teacher-username">Username</label>
+          <input type="text" id="add-teacher-username" required placeholder="e.g. aturing">
+        </div>
+        <div class="form-group">
+          <label for="add-teacher-password">Password (min 6 characters)</label>
+          <input type="password" id="add-teacher-password" required minlength="6">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-add-teacher">Create Teacher</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reset Teacher Password Modal -->
+  <div id="modal-reset-teacher-password" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+      <h2>Reset Teacher Password</h2>
+      <p id="reset-teacher-desc" style="margin-bottom: 16px;">Set a new password for this teacher account.</p>
+      <div id="reset-teacher-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="form-reset-teacher-password">
+        <input type="hidden" id="reset-teacher-id">
+        <div class="form-group">
+          <label for="reset-teacher-new-password">New Password (min 6 characters)</label>
+          <input type="password" id="reset-teacher-new-password" required minlength="6">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-reset-teacher-password">Save Password</button>
         </div>
       </form>
     </div>

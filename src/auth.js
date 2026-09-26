@@ -112,7 +112,7 @@ async function requireTeacher(req, res, next) {
     req.session = null;
   }
 
-  if (req.path.startsWith('/api/')) {
+  if (req.originalUrl?.startsWith('/api/') || req.path.startsWith('/api/')) {
     return res.status(403).json({ ok: false, error: 'Teacher authentication required' });
   }
   return res.redirect('/teacher/login');
@@ -133,7 +133,7 @@ async function requireStudent(req, res, next) {
     req.session = null;
   }
 
-  if (req.path.startsWith('/api/')) {
+  if (req.originalUrl?.startsWith('/api/') || req.path.startsWith('/api/')) {
     return res.status(403).json({ ok: false, error: 'Student authentication required' });
   }
   return res.redirect('/student/login');

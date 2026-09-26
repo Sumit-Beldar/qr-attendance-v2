@@ -117,6 +117,7 @@ function switchTab(tabName) {
     stopLivePolling();
     loadSettings();
     loadStudentLinkQr();
+    loadTeacherAccounts();
   }
 }
 
@@ -1073,6 +1074,178 @@ document.getElementById('btn-use-current-location').addEventListener('click', ()
     { enableHighAccuracy: true, timeout: 10000 }
   );
 });
+
+// ==========================================
+// TEACHER ACCOUNTS
+// ==========================================
+
+async function loadTeacherAccounts() {
+  const tbody = document.getElementById('teachers-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/teacher/accounts');
+    const data = await res.json();
+    if (!data.ok) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--error); padding: 16px;">Failed to load teacher accounts</td></tr>`;
+      return;
+    }
+
+    if (!data.teachers || data.teachers.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--muted); padding: 16px;">No teacher accounts found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.teachers
+      .map((t) => {
+        const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString() : '-';
+        return `
+          <tr>
+            <td><strong>${escapeHtml(t.name)}</strong></td>
+            <td><code>${escapeHtml(t.username)}</code></td>
+            <td class="text-sm text-muted">${dateStr}</td>
+            <td style="text-align: right;">
+              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px; min-height: 28px;" onclick="openResetTeacherPasswordModal(${t.id}, '${escapeHtml(t.name)}')">Reset Password</button>
+              ${
+                data.teachers.length > 1
+                  ? `<button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px; min-height: 28px; margin-left: 4px;" onclick="deleteTeacherAccount(${t.id}, '${escapeHtml(t.name)}')">Delete</button>`
+                  : ''
+              }
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--error); padding: 16px;">Error loading teachers</td></tr>`;
+  }
+}
+
+// Add Teacher Modal & Form
+const btnOpenAddTeacher = document.getElementById('btn-open-add-teacher');
+if (btnOpenAddTeacher) {
+  btnOpenAddTeacher.addEventListener('click', () => {
+    const alertEl = document.getElementById('add-teacher-alert');
+    if (alertEl) alertEl.style.display = 'none';
+    const form = document.getElementById('form-add-teacher');
+    if (form) form.reset();
+    openModal('modal-add-teacher');
+  });
+}
+
+const formAddTeacher = document.getElementById('form-add-teacher');
+if (formAddTeacher) {
+  formAddTeacher.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertEl = document.getElementById('add-teacher-alert');
+    if (alertEl) alertEl.style.display = 'none';
+
+    const name = document.getElementById('add-teacher-name').value;
+    const username = document.getElementById('add-teacher-username').value;
+    const password = document.getElementById('add-teacher-password').value;
+
+    const btn = document.getElementById('btn-submit-add-teacher');
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/teacher/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, username, password }),
+      });
+      const data = await res.json();
+      if (btn) btn.disabled = false;
+
+      if (!data.ok) {
+        if (alertEl) {
+          alertEl.textContent = data.error || 'Failed to create teacher account';
+          alertEl.style.display = 'block';
+        }
+        return;
+      }
+
+      closeModal('modal-add-teacher');
+      showToast(data.message || 'Teacher account created successfully');
+      loadTeacherAccounts();
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (alertEl) {
+        alertEl.textContent = 'Server connection error';
+        alertEl.style.display = 'block';
+      }
+    }
+  });
+}
+
+// Reset Teacher Password Modal & Form
+window.openResetTeacherPasswordModal = function (id, name) {
+  document.getElementById('reset-teacher-id').value = id;
+  document.getElementById('reset-teacher-desc').textContent = `Set a new password for ${name}:`;
+  const alertEl = document.getElementById('reset-teacher-alert');
+  if (alertEl) alertEl.style.display = 'none';
+  const form = document.getElementById('form-reset-teacher-password');
+  if (form) form.reset();
+  openModal('modal-reset-teacher-password');
+};
+
+const formResetTeacherPassword = document.getElementById('form-reset-teacher-password');
+if (formResetTeacherPassword) {
+  formResetTeacherPassword.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('reset-teacher-id').value;
+    const new_password = document.getElementById('reset-teacher-new-password').value;
+    const alertEl = document.getElementById('reset-teacher-alert');
+    if (alertEl) alertEl.style.display = 'none';
+
+    const btn = document.getElementById('btn-submit-reset-teacher-password');
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/teacher/accounts/${id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_password }),
+      });
+      const data = await res.json();
+      if (btn) btn.disabled = false;
+
+      if (!data.ok) {
+        if (alertEl) {
+          alertEl.textContent = data.error || 'Failed to reset password';
+          alertEl.style.display = 'block';
+        }
+        return;
+      }
+
+      closeModal('modal-reset-teacher-password');
+      showToast(data.message || 'Password reset successfully');
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (alertEl) {
+        alertEl.textContent = 'Server connection error';
+        alertEl.style.display = 'block';
+      }
+    }
+  });
+}
+
+// Delete Teacher Account
+window.deleteTeacherAccount = async function (id, name) {
+  if (!confirm(`Are you sure you want to delete teacher account "${name}"?`)) return;
+
+  try {
+    const res = await fetch(`/api/teacher/accounts/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.ok) {
+      showToast(data.error);
+      return;
+    }
+    showToast(data.message || `Teacher "${name}" deleted`);
+    loadTeacherAccounts();
+  } catch (err) {
+    showToast('Failed to delete teacher account');
+  }
+};
 
 // Utilities
 function escapeHtml(str) {
