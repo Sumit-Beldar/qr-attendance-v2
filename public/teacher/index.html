@@ -190,31 +190,6 @@
         </div>
       </div>
 
-      <!-- SETTINGS SECTION -->
-      <div id="section-settings" class="app-section" style="display: none;">
-        <div style="margin-bottom: 16px;">
-          <h1>Settings</h1>
-          <p>Configure network IP detection and attendance security rules.</p>
-        </div>
-        <div class="card" style="max-width: 600px;">
-          <form id="form-settings">
-            <div class="form-group">
-              <label for="settings-ip">Active Network IP Address</label>
-              <select id="settings-ip"></select>
-              <p class="text-sm text-muted" style="margin-top: 6px;">Used to generate all QR codes and student URLs. Must be the IP reachable by student phones on the same Wi-Fi or hotspot.</p>
-            </div>
-            <div class="form-group" style="margin-top: 20px;">
-              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                <input type="checkbox" id="settings-device-lock" style="width: 18px; height: 18px;">
-                <span style="font-weight: 500; font-size: 15px;">Enforce One Phone per Student (Anti-Proxy)</span>
-              </label>
-              <p class="text-sm text-muted" style="margin-left: 26px; margin-top: 4px;">Blocks a phone from marking attendance for multiple students during the same session, and logs proxy attempts.</p>
-            </div>
-            <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Save Settings</button>
-          </form>
-        </div>
-      </div>
-
       <!-- START ATTENDANCE SECTION -->
       <div id="section-start" class="app-section" style="display: none;">
         <div style="margin-bottom: 20px;">
